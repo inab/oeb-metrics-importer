@@ -9,8 +9,7 @@ def import_data():
     STORAGE_MODE = os.getenv('STORAGE_MODE', 'db')
 
     if STORAGE_MODE =='db':
-        ALAMBIQUE = os.getenv('ALAMBIQUE', 'alambique') 
-        alambique = connect_db(ALAMBIQUE)
+        alambique = connect_db()
 
     else:
         OUTPUT_PATH = os.getenv('OUTPUT_PATH', './data/opeb_tools.json')
