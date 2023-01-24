@@ -30,7 +30,6 @@ def import_data():
 
             # 4. output/push to db tools metadata
             if STORAGE_MODE=='db':
-                print('Pushing to db')
                 log = push_entry(inst_dict, alambique, log)
             else:
                 log = save_entry(inst_dict, OUTPUT_PATH, log)
