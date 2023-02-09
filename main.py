@@ -1,11 +1,32 @@
 import requests as re
 import json
 import os
+import logging
+import argparse
+from dotenv import load_dotenv
 from utils import get_url, connect_db, push_entry, save_entry
 
 
 def import_data():
+    # 0.1 Set up logging
+    parser = argparse.ArgumentParser(
+        description="Importer of OpenEBench tools from OpenEBench Tool API"
+    )
+    parser.add_argument(
+        "--loglevel", "-l",
+        help=("Set the logging level"),
+        default="INFO",
+    )
+    args = parser.parse_args()
+    numeric_level = getattr(logging, args.loglevel.upper())
+
+    logging.basicConfig(level=numeric_level, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # 0.2 Load .env
+    load_dotenv()
+
     # 1. connect to DB/get output files
+    logging.info('Connecting to database')
     STORAGE_MODE = os.getenv('STORAGE_MODE', 'db')
 
     if STORAGE_MODE =='db':
@@ -15,7 +36,9 @@ def import_data():
         OUTPUT_PATH = os.getenv('OUTPUT_PATH', './data/opeb_tools.json')
 
     # 2. Get metrics metadata from OPEB
+    logging.info('Downloading OPEB metrics entries')
     URL_OPEB_METRICS = os.getenv('URL_OPEB_METRICS', 'https://openebench.bsc.es/monitor/metrics/')
+    logging.info(f'OpenEBench metrics URL:{URL_OPEB_METRICS}')
     content_decoded = get_url(URL_OPEB_METRICS)
 
     if content_decoded:
@@ -23,6 +46,7 @@ def import_data():
            'n_ok':0,
            'errors': []}
         
+        logging.info(f'Processing {len(content_decoded)} OPEB metrics entries')
         for inst_dict in content_decoded:
              # 3. Add data source to each entry
             inst_dict['@data_source'] = 'opeb_metrics'
@@ -32,6 +56,9 @@ def import_data():
                 log = push_entry(inst_dict, alambique, log)
             else:
                 log = save_entry(inst_dict, OUTPUT_PATH, log)
+    
+    else:
+        logging.info('No content to process. Exiting.')
 
 if __name__ == "__main__":
     import_data()
