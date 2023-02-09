@@ -47,7 +47,14 @@ def import_data():
            'errors': []}
         
         logging.info(f'Processing {len(content_decoded)} OPEB metrics entries')
+        n=0
+        landmarks = {str(int((len(content_decoded)/10)*i)): f"{i*10}%" for i in range(0,11)} # 10% landmarks for logging
+
         for inst_dict in content_decoded:
+            if str(n) in landmarks.keys():
+                logging.info(f'{n}/{len(content_decoded)} ({landmarks[str(n)]}) instances pushed to database\r')
+                n+=1
+
              # 3. Add data source to each entry
             inst_dict['@data_source'] = 'opeb_metrics'
 
