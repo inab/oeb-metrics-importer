@@ -19,10 +19,12 @@ def push_entry(tool:dict, collection:'pymongo.collection.Collection', log:dict):
         updateResult = collection.update_many({'@id':tool['@id']}, { '$set': tool }, upsert=True)
     except Exception as e:
         log['errors'].append({'file':tool,'error':e})
-        logging.error(f'Error pushing {tool["@id"]}: {e}')
+        logging.warning(f'Error pushing {tool["@id"]}: {e}')
+        logging.info(f'pushed_to_db - opeb_metrics - ERROR')
         return(log)
     else:
         log['n_ok'] += 1
+        logging.info(f'pushed_to_db - opeb_metrics - OK')
     finally:
         return(log)
 
