@@ -4,7 +4,7 @@ import requests
 import logging
 from pymongo import MongoClient
 
-def push_entry(tool:dict, collection:'pymongo.collection.Collection', log:dict):
+def push_entry(tool:dict, collection:'pymongo.collection.Collection'):
     '''Push tool to collection.
 
     tool: dictionary. Must have at least an '@id' key.
@@ -18,18 +18,16 @@ def push_entry(tool:dict, collection:'pymongo.collection.Collection', log:dict):
     try:
         updateResult = collection.update_many({'@id':tool['@id']}, { '$set': tool }, upsert=True)
     except Exception as e:
-        log['errors'].append({'file':tool,'error':e})
-        logging.warning(f'Error pushing {tool["@id"]}: {e}')
-        logging.info(f'pushed_to_db - opeb_metrics - ERROR')
-        return(log)
+        logging.warning(f"error with {tool['@id']} - pushing_to_db")
+        logging.warning(e)
+
     else:
-        log['n_ok'] += 1
-        logging.info(f'pushed_to_db - opeb_metrics - OK')
+        logging.info(f"pushed_to_db_ok - {tool['@id']}")
     finally:
-        return(log)
+        return
 
 
-def save_entry(tool, output_file, log):
+def save_entry(tool, output_file):
     '''Save tool to file.
 
     tool: dictionary. Must have at least an '@id' key.
@@ -54,14 +52,14 @@ def save_entry(tool, output_file, log):
                 json.dump(data, outfile)
 
     except Exception as e:
-        log['errors'].append({'file':tool['name'],'error':e})
-        logging.error(f'Error saving {tool["name"]}: {e}')
-        return(log)
+        logging.warning(f"error with {tool['@id']} - pushing_to_db")
+        logging.warning(e)
 
     else:
-        log['n_ok'] += 1
+        logging.info(f"pushed_to_db_ok - {tool['@id']}")
+
     finally:
-        return(log)
+        return
 
 def connect_db():
     '''Connect to MongoDB and return the database and collection objects.
@@ -90,19 +88,18 @@ def get_url(url, verb=False):
     try:
         re = session.get(url, headers=headers, timeout=(10, 30))
     except Exception as e:
-        logging.error('Impossible to make the request')
-        logging.error(f"Problematic url: {url}")
-        logging.error(e)
-        exit(1)
+        logging.warning(f"error with {url} - html_request")
+        logging.warning(e)
+        return None
+        
     else:
         if re.status_code == 200:
             content_decoded = decode_json(re)
             return(content_decoded)
         else:
-            logging.error(f"Error while fetching the url. Status code: {str(re.status_code)}")
-            logging.error(f"Problematic url: {url}")
-            logging.error(e)
-            exit(1)
+            logging.warning(f"error with {url} - html_request")
+            logging.warning(e)
+            return None
 
 def decode_json(json_res):
     '''
@@ -111,8 +108,9 @@ def decode_json(json_res):
     try:
         content_decoded=json.loads(json_res.text)
     except Exception as e:
-        logging.error('Impossible to decode the json. Please, check URL_OPEB_METRICS')
+        logging.warning(f"error with NA - json_decode")
+        logging.warning('Impossible to decode the json. Please, check URL_OPEB_METRICS')
         logging.error(e)
-        exit(1)
+        return None
     else:
         return(content_decoded)
