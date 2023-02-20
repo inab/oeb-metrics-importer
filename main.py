@@ -42,7 +42,7 @@ def import_data():
     else:
         OUTPUT_PATH = os.getenv('OUTPUT_PATH', './data/opeb_tools.json')
 
-    logging.info("start_importation")
+    logging.info("state_importation - 1")
     # 2. Get metrics metadata from OPEB
     logging.info('downloading OPEB metrics entries')
     URL_OPEB_METRICS = os.getenv('URL_OPEB_METRICS', 'https://openebench.bsc.es/monitor/metrics/')
@@ -64,12 +64,12 @@ def import_data():
             else:
                 save_entry(inst_dict, OUTPUT_PATH)
 
-        logging.info("end_importation")
+        logging.info("state_importation - 0")
 
     else:
         logging.error('error - crucial_object_empty')
         logging.error('No content to process. Exiting...')
-        logging.info("end_importation")
+        logging.info("state_importation - 0")
         exit(1)
     
 if __name__ == "__main__":
