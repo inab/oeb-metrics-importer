@@ -1,10 +1,91 @@
 import requests as re
-import json
 import os
 import logging
 import argparse
-from dotenv import load_dotenv
-from utils import get_url, connect_db, push_entry, save_entry
+import sys
+from utils import get_url, connect_db, push_entry, push_publication, add_metadata_to_entry, add_metadata_to_publication
+
+
+def get_meta_from_opeb():
+    '''
+    '''
+    logging.info('downloading OPEB metrics entries')
+    URL_OPEB_METRICS = os.getenv('URL_OPEB_METRICS', 'https://openebench.bsc.es/monitor/metrics/')
+    logging.info(f'openEBench metrics URL:{URL_OPEB_METRICS}')
+    content_decoded = get_url(URL_OPEB_METRICS)
+    return content_decoded
+
+
+def get_url_from_oeb(id: str):
+    '''
+    For an @id, return the URL using the oeb monitoring api
+    form: https://openebench.bsc.es/monitor/tool/biotools:aurocch:1.1.0.0/lib/www.mathworks.com
+    data to fetch: https://openebench.bsc.es/monitor/metrics/biotools:aurocch:1.1.0.0/lib/www.mathworks.com
+    '''
+    url_data = id.replace('/metrics/', '/tool/')
+    data = get_url(url_data)
+
+    if data:
+        if data.get('web'):
+            return data['web'].get('homepage')
+
+    return None
+
+def process_web_metrics(inst_dict: dict):
+    '''
+    '''
+    # extract website metrics
+    data = inst_dict.get('project')
+    data = data.get('website') if data else None
+    if data:
+        url = get_url_from_oeb(inst_dict.get('@id'))
+
+    if data and url:
+        # add metadata
+        entry = {
+            'data' : data,
+            '@data_source'  : 'opeb_metrics',
+            '_id': url
+        }
+
+        # update metadata and push
+        webMetrics = connect_db('webMetrics')
+        document_w_metadata = add_metadata_to_entry(url, entry, webMetrics)
+        push_entry(document_w_metadata, webMetrics)
+
+    return
+
+
+
+def process_publications(inst_dict: dict):
+    '''
+    '''
+    # extract publications
+    if inst_dict.get('project'):
+        if inst_dict['project'].get('publications'):
+            publications = inst_dict['project']['publications']
+            for pub in publications:
+                if pub.get('entries'):
+                    # add metadata
+                    item = pub['entries'][0]
+                    doi = item.get('doi')
+                    pmid = item.get('pmid')
+                    pmcid = item.get('pmcid')
+                    if doi or pmid or pmcid:
+                        entry = {
+                            'data' : item,
+                            '@data_source'  : 'opeb_metrics',
+                            '@doi': item.get('doi'),
+                            '@pmid': item.get('pmid'),
+                            '@pmcid': item.get('pmcid')
+                        }
+
+                        # update metadata and push
+                        publications = connect_db_local('publications')
+                        document_w_metadata = add_metadata_to_publication(item.get('doi'), item.get('pmid'), item.get('pmcid'), entry, publications)
+                        push_publication(document_w_metadata, publications)
+    
+    return
 
 
 def import_data():
@@ -18,37 +99,16 @@ def import_data():
             help=("Set the logging level"),
             default="INFO",
         )
-        parser.add_argument(
-            "--logdir", "-d",
-            help=("Set the logging directory"),
-            default="./logs/summary.log",
-        )
 
         args = parser.parse_args()
         numeric_level = getattr(logging, args.loglevel.upper())
-        logs_dir = args.logdir 
 
-        logging.basicConfig(level=numeric_level, format='%(asctime)s - %(levelname)s - opeb_metrics - %(message)s', filename=f'{logs_dir}', filemode='w')
+        logging.basicConfig(level=numeric_level, format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)        
 
-        # 0.2 Load .env
-        load_dotenv()
-
-        # 1. connect to DB/get output files
-        logging.info('connecting to database')
-        STORAGE_MODE = os.getenv('STORAGE_MODE', 'db')
-
-        if STORAGE_MODE =='db':
-            alambique = connect_db()
-
-        else:
-            OUTPUT_PATH = os.getenv('OUTPUT_PATH', './data/opeb_tools.json')
 
         logging.info("state_importation - 1")
         # 2. Get metrics metadata from OPEB
-        logging.info('downloading OPEB metrics entries')
-        URL_OPEB_METRICS = os.getenv('URL_OPEB_METRICS', 'https://openebench.bsc.es/monitor/metrics/')
-        logging.info(f'openEBench metrics URL:{URL_OPEB_METRICS}')
-        content_decoded = get_url(URL_OPEB_METRICS)
+        content_decoded = get_meta_from_opeb()
 
         if content_decoded:
 
@@ -56,21 +116,23 @@ def import_data():
 
             for inst_dict in content_decoded:
 
-                # 3. Add data source to each entry
-                inst_dict['@data_source'] = 'opeb_metrics'
+                if inst_dict:
 
-                # 4. output/push to db tools metadata
-                if STORAGE_MODE=='db':
-                    push_entry(inst_dict, alambique)
-                else:
-                    save_entry(inst_dict, OUTPUT_PATH)
+                    # extract website metrics
+                    process_web_metrics(inst_dict)
+
+                    # extract publications
+                    #process_publications(inst_dict)
+                
         else:
+            logging.exception("Exception occurred")
             logging.error('error - crucial_object_empty')
             logging.error('No content to processed. content_decoded is empty. Exiting...')
             logging.info("state_importation - 2")
             exit(1) 
         
     except Exception as e:
+        logging.exception("Exception occurred")
         logging.error(f'error - {type(e).__name__}')
         logging.info("state_importation - 2")
         exit(1)
