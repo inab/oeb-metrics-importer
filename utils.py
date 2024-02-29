@@ -125,7 +125,7 @@ def add_metadata_to_entry(identifier: str, entry: dict, alambique:Collection):
     '''
     This function adds metadata regarding update and returns it.
         {
-            "@url": "toolshed/trimal/cmd/1.4",
+            "_id": "toolshed/trimal/cmd/1.4",
             "@created_at": "2023-01-01T00:00:00Z", 
             "@created_by": ObjectId("integration_20240210103607"),
             "@last_updated_at": "2023-02-01T12:00:00Z",

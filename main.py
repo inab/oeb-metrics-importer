@@ -15,7 +15,6 @@ def get_meta_from_opeb():
     content_decoded = get_url(URL_OPEB_METRICS)
     return content_decoded
 
-
 def get_url_from_oeb(id: str):
     '''
     For an @id, return the URL using the oeb monitoring api
@@ -56,6 +55,46 @@ def process_web_metrics(inst_dict: dict):
     return
 
 
+def process_tool_publications(inst_dict: dict):
+    '''
+    push to alambque tool publications with ids, title and year
+    '''
+    id_ = inst_dict.get('@id')
+    if len(id_.split('/'))>6:
+        main = id_.split('/')[5]
+        if ':' in main: 
+            name = main.split(':')[1]
+            if len(main.split(':'))>2:
+                version = main.split(':')[2]
+            else:
+                version = None
+        else:
+            name = main
+            version = None
+
+        type_ = id_.split('/')[6]
+
+        identifier = f"opeb_metrics/{name}/{type_}/{version}"
+        inst_dict['name'] = name
+        inst_dict['@type'] = type_
+        inst_dict['version'] = version 
+
+    else:
+        name = id_.split('/')[5]
+        inst_dict['name'] = name
+        identifier = f"opeb_metrics/{name}//"
+    
+    entry = {
+        'data' : inst_dict,
+        '@data_source'  : 'opeb_metrics',
+        '_id': identifier
+    }
+
+    # update metadata and push
+    alambique = connect_db('alambique')
+    document_w_metadata = add_metadata_to_entry(identifier, entry, alambique)
+    push_entry(document_w_metadata, alambique)
+    
 
 def process_publications(inst_dict: dict):
     '''
@@ -81,7 +120,7 @@ def process_publications(inst_dict: dict):
                         }
 
                         # update metadata and push
-                        publications = connect_db_local('publications')
+                        publications = connect_db('publications')
                         document_w_metadata = add_metadata_to_publication(item.get('doi'), item.get('pmid'), item.get('pmcid'), entry, publications)
                         push_publication(document_w_metadata, publications)
     
@@ -119,10 +158,13 @@ def import_data():
                 if inst_dict:
 
                     # extract website metrics
-                    process_web_metrics(inst_dict)
+                    #process_web_metrics(inst_dict)
 
                     # extract publications
                     #process_publications(inst_dict)
+
+                    # extract tool publications
+                    process_tool_publications(inst_dict)
                 
         else:
             logging.exception("Exception occurred")
