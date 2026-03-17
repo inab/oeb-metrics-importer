@@ -253,15 +253,15 @@ def connect_db(collection_name: str):
 
     '''
     # variables come from .env file
-    mongoHost = os.getenv('HOST', default='localhost')
-    mongoPort = os.getenv('PORT', default='27017')
-    mongoUser = os.getenv('USER')
-    mongoPass = os.getenv('PASS')
-    mongoAuthSrc = os.getenv('AUTH_SRC', default='admin')
-    mongoDb = os.getenv('DB', default='oeb-research-software')
+    mongoHost = os.getenv('MONGO_HOST', default='localhost')
+    mongoPort = os.getenv('MONGO_PORT', default='27017')
+    mongoUser = os.getenv('MONGO_USER')
+    mongoPass = os.getenv('MONGO_PASS')
+    mongoAuthSrc = os.getenv('MONGO_AUTH_SRC', default='admin')
+    mongoDb = os.getenv('MONGO_DB', default='oeb-research-software')
 
     collections = {
-        'alambique': os.getenv('ALAMBIQUE', default='alambique'),
+        'alambique': os.getenv('ALAMBIQUE', default='alambiqueDev'),
         'publications': os.getenv('PUBLICATIONS', default='publications'), 
         'webMetrics': os.getenv('WEB_METRICS', default='webMetrics')
     }
